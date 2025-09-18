@@ -1,8 +1,6 @@
 "use client";
-
 import { useState } from "react";
 
-// ユーザー型
 type User = {
   id: number;
   username: string;
@@ -10,17 +8,23 @@ type User = {
   password: string;
 };
 
-// 仮DB（今はlocalStorageで代用）
-const saveUser = (user: User) => {
-  const users: User[] = JSON.parse(localStorage.getItem("users") || "[]");
+const loadUsers = (): User[] => {
+  const raw = localStorage.getItem("users");
+  return raw ? (JSON.parse(raw) as User[]) : [];
+};
 
-  // メールアドレス重複チェック
-  if (users.some((u) => u.email === user.email)) {
+const saveUsers = (users: User[]) => {
+  localStorage.setItem("users", JSON.stringify(users));
+};
+
+const addUser = (user: User) => {
+  const users = loadUsers();
+  // any を使わず、User 型として扱う
+  if (users.some((u: User) => u.email === user.email)) {
     throw new Error("このメールアドレスは既に登録済みです。");
   }
-
   users.push(user);
-  localStorage.setItem("users", JSON.stringify(users));
+  saveUsers(users);
 };
 
 export default function RegisterPage() {
@@ -31,7 +35,6 @@ export default function RegisterPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
       const newUser: User = {
         id: Date.now(),
@@ -39,48 +42,33 @@ export default function RegisterPage() {
         email,
         password,
       };
-
-      saveUser(newUser);
+      addUser(newUser);
       setMessage("登録が完了しました！");
       setUsername("");
       setEmail("");
       setPassword("");
-    } catch (err: any) {
-      setMessage(err.message);
+    } catch (err: unknown) {
+      // any を使わず unknown → 絞り込み
+      if (err instanceof Error) setMessage(err.message);
+      else setMessage("登録に失敗しました。");
     }
   };
 
   return (
-    <div style={{ padding: "20px" }}>
+    <div style={{ padding: 20 }}>
       <h1>会員登録</h1>
       <form onSubmit={handleSubmit}>
         <div>
           <label>ユーザー名：</label>
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
+          <input value={username} onChange={(e) => setUsername(e.target.value)} required />
         </div>
         <div>
           <label>メールアドレス：</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
         <div>
           <label>パスワード：</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            minLength={6}
-            required
-          />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
         </div>
         <button type="submit">登録</button>
       </form>
